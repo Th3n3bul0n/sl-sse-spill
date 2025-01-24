@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tekken Style Battle Arena</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            overflow: hidden;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        canvas {
+            display: block;
+            margin: 20px auto;
+            border: 3px solid #fff;
+            background: url('assets/images/arena_background.jpg') no-repeat center center;
+            background-size: cover;
+        }
+        #winnerMessage {
+            font-size: 24px;
+            color: yellow;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tekken Style Battle Arena</h1>
+    <canvas id="battleArena" width="800" height="400"></canvas>
+    <h2 id="winnerMessage"></h2>
+
+    <script>
+        const canvas = document.getElementById('battleArena');
+        const ctx = canvas.getContext('2d');
+
+        // Player settings
+        const player1 = {
+            x: 100,
+            y: 300, // Locked to the ground
+            width: 100,
+            height: 150,
+            color: 'blue',
+            hp: 100,
+            speed: 5,
+            isJumping: false,
+            jumpVelocity: 0,
+            img: null
+        };
+
+        const player2 = {
+            x: 600,
+            y: 300, // Locked to the ground
+            width: 100,
+            height: 150,
+            color: 'red',
+            hp: 100,
+            speed: 5,
+            isJumping: false,
+            jumpVelocity: 0,
+            img: null
+        };
+
+        // Key states
+        const keys = {};
+
+        // Gravity for jumping
+        const gravity = 1;
+
+        // Draw players
+        function drawPlayer(player) {
+            if (player.img) {
+                ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
+            } else {
+                ctx.fillStyle = player.color;
+                ctx.fillRect(player.x, player.y, player.width, player.height);
+            }
+        }
+
+        // Draw health bars
+        function drawHealthBar(player, x, y) {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(x, y, 100, 10);
+            ctx.fillStyle = 'green';
+            ctx.fillRect(x, y, player.hp, 10);
+        }
+
+        // Check collision
+        function isColliding(player1, player2) {
+            return (
+                player1.x < player2.x + player2.width &&
+                player1.x + player1.width > player2.x &&
+                player1.y < player2.y + player2.height &&
+                player1.y + player1.height > player2.y
+            );
+        }
+
+        // Handle jumping
+        function handleJump(player) {
+            if (player.isJumping) {
+                player.y -= player.jumpVelocity;
+                player.jumpVelocity -= gravity;
+
+                if (player.y >= 300) {
+                    player.y = 300; // Reset to ground
+                    player.isJumping = false;
+                    player.jumpVelocity = 0;
+                }
+            }
+        }
+
+        // Update game state
+        function update() {
+            // Move player 1
+            if (keys['a'] && player1.x > 0) player1.x -= player1.speed;
+            if (keys['d'] && player1.x < canvas.width - player1.width) player1.x += player1.speed;
+            if (keys['w'] && !player1.isJumping) {
+                player1.isJumping = true;
+                player1.jumpVelocity = 15;
+            }
+
+            // Move player 2
+            if (keys['ArrowLeft'] && player2.x > 0) player2.x -= player2.speed;
+            if (keys['ArrowRight'] && player2.x < canvas.width - player2.width) player2.x += player2.speed;
+            if (keys['ArrowUp'] && !player2.isJumping) {
+                player2.isJumping = true;
+                player2.jumpVelocity = 15;
+            }
+
+            // Handle jumping
+            handleJump(player1);
+            handleJump(player2);
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw players
+            drawPlayer(player1);
+            drawPlayer(player2);
+
+            // Draw health bars
+            drawHealthBar(player1, 20, 20);
+            drawHealthBar(player2, canvas.width - 120, 20);
+
+            // Check collision for attack
+            if (isColliding(player1, player2)) {
+                if (keys['q']) player2.hp = Math.max(player2.hp - 10, 0); // Player 1 punches
+                if (keys['e']) player2.hp = Math.max(player2.hp - 15, 0); // Player 1 kicks
+                if (keys['m']) player1.hp = Math.max(player1.hp - 10, 0); // Player 2 punches
+                if (keys['n']) player1.hp = Math.max(player1.hp - 15, 0); // Player 2 kicks
+            }
+
+            // Check for winner
+            if (player1.hp <= 0 || player2.hp <= 0) {
+                document.getElementById('winnerMessage').textContent =
+                    player1.hp <= 0 ? 'Player 2 Wins!' : 'Player 1 Wins!';
+                return true;
+            }
+            return false;
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!update()) requestAnimationFrame(gameLoop);
+        }
+
+        // Handle keydown
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        // Handle keyup
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Initialize players with images
+        function initializeBattle(player1Image, player2Image) {
+            player1.img = new Image();
+            player1.img.src = player1Image;
+
+            player2.img = new Image();
+            player2.img.src = player2Image;
+
+            gameLoop();
+        }
+
+        // Start the battle
+        initializeBattle("assets/images/20250124_155303.png", "assets/images/20250124_155345.png");
+    </script>
+</body>
+</html>
