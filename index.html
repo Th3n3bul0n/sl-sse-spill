@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tekken Game - Fixed HP and Damage</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        canvas {
+            display: block;
+            margin: 20px auto;
+            border: 3px solid white;
+            background-color: black;
+        }
+        #winner {
+            font-size: 24px;
+            color: yellow;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div id="winner"></div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Player objects
+        const player1 = {
+            x: 50,
+            y: 250,
+            width: 100,
+            height: 150,
+            img: new Image(),
+            hp: 100,
+            isJumping: false,
+            jumpSpeed: 0,
+            onGround: true
+        };
+
+        const player2 = {
+            x: 650,
+            y: 250,
+            width: 100,
+            height: 150,
+            img: new Image(),
+            hp: 100,
+            isJumping: false,
+            jumpSpeed: 0,
+            onGround: true
+        };
+
+        // Load character images
+        player1.img.src = 'assets/images/20250124_155303.png';
+        player2.img.src = 'assets/images/20250124_155345.png';
+
+        const gravity = 1;
+        const jumpStrength = 15;
+        const movementSpeed = 5;
+
+        // Key states
+        const keys = {};
+
+        // Damage values
+        const punchDamage = 10;
+        const kickDamage = 15;
+
+        // Draw players
+        function drawPlayer(player) {
+            ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
+        }
+
+        // Draw HP bars
+        function drawHP(player, x) {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(x, 20, 100, 10);
+            ctx.fillStyle = 'green';
+            ctx.fillRect(x, 20, player.hp, 10);
+        }
+
+        // Check for collision
+        function isColliding(p1, p2) {
+            return (
+                p1.x < p2.x + p2.width &&
+                p1.x + p1.width > p2.x &&
+                p1.y < p2.y + p2.height &&
+                p1.y + p1.height > p2.y
+            );
+        }
+
+        // Game loop
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Player 1 movement
+            if (keys['a'] && player1.x > 0) player1.x -= movementSpeed;
+            if (keys['d'] && player1.x < canvas.width - player1.width) player1.x += movementSpeed;
+            if (keys['w'] && player1.onGround) {
+                player1.isJumping = true;
+                player1.jumpSpeed = -jumpStrength;
+                player1.onGround = false;
+            }
+
+            // Player 2 movement
+            if (keys['ArrowLeft'] && player2.x > 0) player2.x -= movementSpeed;
+            if (keys['ArrowRight'] && player2.x < canvas.width - player2.width) player2.x += movementSpeed;
+            if (keys['ArrowUp'] && player2.onGround) {
+                player2.isJumping = true;
+                player2.jumpSpeed = -jumpStrength;
+                player2.onGround = false;
+            }
+
+            // Apply gravity
+            [player1, player2].forEach(player => {
+                if (player.isJumping) {
+                    player.y += player.jumpSpeed;
+                    player.jumpSpeed += gravity;
+                    if (player.y >= 250) {
+                        player.y = 250;
+                        player.isJumping = false;
+                        player.onGround = true;
+                    }
+                }
+            });
+
+            // Attacks
+            if (isColliding(player1, player2)) {
+                if (keys['q']) player2.hp = Math.max(0, player2.hp - punchDamage);
+                if (keys['e']) player2.hp = Math.max(0, player2.hp - kickDamage);
+
+                if (keys['m']) player1.hp = Math.max(0, player1.hp - punchDamage);
+                if (keys['n']) player1.hp = Math.max(0, player1.hp - kickDamage);
+            }
+
+            // Draw players and HP bars
+            drawPlayer(player1);
+            drawPlayer(player2);
+            drawHP(player1, 50);
+            drawHP(player2, 650);
+
+            // Check for winner
+            if (player1.hp === 0 || player2.hp === 0) {
+                document.getElementById('winner').textContent =
+                    player1.hp === 0 ? 'Player 2 Wins!' : 'Player 1 Wins!';
+                return;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        window.addEventListener('keydown', e => (keys[e.key] = true));
+        window.addEventListener('keyup', e => (keys[e.key] = false));
+
+        // Start the game
+        gameLoop();
+    </script>
+</body>
+</html>
