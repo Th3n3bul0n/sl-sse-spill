@@ -34,40 +34,44 @@
     <div class="character-selection" id="character-selection"></div>
 
     <script>
-        // GitHub base path for assets
+        // Base path for images
         const basePath = './assets/images/';
 
-        // Function to load images dynamically using GitHub directory structure
-        async function loadCharacters() {
+        // Assumed pattern for images
+        const loadImages = async () => {
             try {
-                // GitHub Pages can't list directories directly, so you need image names in advance
-                const characterImages = [
-                    'character1.png',
-                    'character2.png',
-                    'character3.png'
-                ];
+                // GitHub Pages doesn't support directory listing, so we simulate all .png files here
+                const maxCharacters = 10; // Adjust based on your expected number of characters
+                const characters = [];
+                for (let i = 1; i <= maxCharacters; i++) {
+                    characters.push(`${basePath}character${i}.png`);
+                }
 
-                // Display characters
+                // Load and display images
                 const characterSelectionDiv = document.getElementById('character-selection');
-                characterImages.forEach(image => {
-                    const img = document.createElement('img');
-                    img.src = `${basePath}${image}`;
+                characters.forEach((imageSrc) => {
+                    const img = new Image();
+                    img.src = imageSrc;
                     img.className = 'character';
-                    img.alt = image.split('.')[0];
-                    img.addEventListener('click', () => {
-                        document.querySelectorAll('.character').forEach(c => c.classList.remove('selected'));
-                        img.classList.add('selected');
-                        console.log(`Selected: ${img.alt}`);
-                    });
-                    characterSelectionDiv.appendChild(img);
+                    img.onerror = () => {
+                        console.log(`Image not found: ${imageSrc}`);
+                    };
+                    img.onload = () => {
+                        img.addEventListener('click', () => {
+                            document.querySelectorAll('.character').forEach(c => c.classList.remove('selected'));
+                            img.classList.add('selected');
+                            console.log(`Selected character: ${imageSrc}`);
+                        });
+                        characterSelectionDiv.appendChild(img);
+                    };
                 });
-            } catch (error) {
-                console.error('Error loading characters:', error);
+            } catch (err) {
+                console.error('Error loading characters:', err);
             }
-        }
+        };
 
-        // Load characters when the page loads
-        loadCharacters();
+        // Call the loader on page load
+        loadImages();
     </script>
 </body>
 </html>
