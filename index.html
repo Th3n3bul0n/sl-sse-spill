@@ -33,6 +33,19 @@
         .instructions {
             margin-top: 20px;
         }
+        #startGame {
+            display: none;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #startGame:disabled {
+            background-color: gray;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -40,12 +53,13 @@
     <p class="instructions">Player 1: Click to select your character (red border).<br>
     Player 2: Shift + Click to select your character (blue border).</p>
     <div class="character-selection" id="character-selection"></div>
+    <button id="startGame" disabled>Start Game</button>
 
     <script>
         // Base path for images
         const basePath = './assets/images/';
 
-        // Assumed pattern for images
+        // Function to load images dynamically
         const loadImages = async () => {
             try {
                 // Simulate loading characters dynamically
@@ -60,6 +74,18 @@
                 let player2Selection = null;
 
                 const characterSelectionDiv = document.getElementById('character-selection');
+                const startGameButton = document.getElementById('startGame');
+
+                const updateStartButton = () => {
+                    if (player1Selection && player2Selection) {
+                        startGameButton.disabled = false;
+                        startGameButton.style.display = 'block';
+                    } else {
+                        startGameButton.disabled = true;
+                        startGameButton.style.display = 'block';
+                    }
+                };
+
                 characters.forEach((imageSrc) => {
                     const img = new Image();
                     img.src = imageSrc;
@@ -88,17 +114,26 @@
                                 player1Selection = img;
                                 console.log(`Player 1 selected: ${img.src}`);
                             }
+                            updateStartButton();
                         });
 
                         characterSelectionDiv.appendChild(img);
                     };
+                });
+
+                // Start game button functionality
+                startGameButton.addEventListener('click', () => {
+                    if (player1Selection && player2Selection) {
+                        alert(`Game Starting!\nPlayer 1: ${player1Selection.alt}\nPlayer 2: ${player2Selection.alt}`);
+                        console.log('Game Started!');
+                    }
                 });
             } catch (err) {
                 console.error('Error loading characters:', err);
             }
         };
 
-        // Load characters when the page loads
+        // Call the loader on page load
         loadImages();
     </script>
 </body>
