@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tekken Game - Character Selector Fix</title>
+    <title>Tekken Game</title>
     <style>
         body {
-            margin: 0;
-            padding: 0;
             background-color: #111;
-            color: #fff;
+            color: white;
             font-family: Arial, sans-serif;
             text-align: center;
         }
@@ -21,10 +19,10 @@
             margin-top: 50px;
         }
         .character {
-            cursor: pointer;
-            border: 2px solid transparent;
             width: 100px;
             height: 150px;
+            border: 2px solid transparent;
+            cursor: pointer;
         }
         .character.selected {
             border-color: yellow;
@@ -32,40 +30,32 @@
     </style>
 </head>
 <body>
-    <h1>Select Your Characters</h1>
-    <div class="character-selection"></div>
+    <h1>Select Your Character</h1>
+    <div class="character-selection" id="character-selection"></div>
     <script>
-        // Character image URLs
+        // GitHub base path for assets
+        const basePath = './assets/images/';
+
+        // Character images (add the names of all images in the folder)
         const characterImages = [
-            'https://th3n3bul0n.github.io/sl-sse-spill/assets/images/Anna.png',
-            'https://th3n3bul0n.github.io/sl-sse-spill/assets/images/Anna-ovedie.png'
+            'character1.png',
+            'character2.png',
+            'character3.png'
         ];
 
-        // Preloading images
-        const preloadImages = (urls) => {
-            return urls.map(url => {
-                const img = new Image();
-                img.src = url;
-                return img;
+        // Dynamically load characters into the selection
+        const characterSelectionDiv = document.getElementById('character-selection');
+        characterImages.forEach(image => {
+            const img = document.createElement('img');
+            img.src = `${basePath}${image}`;
+            img.className = 'character';
+            img.alt = image.split('.')[0];
+            img.addEventListener('click', () => {
+                document.querySelectorAll('.character').forEach(c => c.classList.remove('selected'));
+                img.classList.add('selected');
+                console.log(`Selected: ${img.alt}`);
             });
-        };
-
-        const characterSelectionDiv = document.querySelector('.character-selection');
-        const preloadedImages = preloadImages(characterImages);
-
-        preloadedImages.forEach(img => {
-            const characterElement = document.createElement('img');
-            characterElement.src = img.src;
-            characterElement.className = 'character';
-            characterSelectionDiv.appendChild(characterElement);
-
-            characterElement.addEventListener('click', () => {
-                if (characterElement.classList.contains('selected')) {
-                    characterElement.classList.remove('selected');
-                } else {
-                    characterElement.classList.add('selected');
-                }
-            });
+            characterSelectionDiv.appendChild(img);
         });
     </script>
 </body>
