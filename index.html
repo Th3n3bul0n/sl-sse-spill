@@ -24,13 +24,21 @@
             cursor: pointer;
             border: 2px solid transparent;
         }
-        .character.selected {
-            border-color: yellow;
+        .character.selected-player1 {
+            border-color: red;
+        }
+        .character.selected-player2 {
+            border-color: blue;
+        }
+        .instructions {
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Select Your Character</h1>
+    <h1>Select Your Characters</h1>
+    <p class="instructions">Player 1: Click to select your character (red border).<br>
+    Player 2: Shift + Click to select your character (blue border).</p>
     <div class="character-selection" id="character-selection"></div>
 
     <script>
@@ -40,28 +48,48 @@
         // Assumed pattern for images
         const loadImages = async () => {
             try {
-                // GitHub Pages doesn't support directory listing, so we simulate all .png files here
-                const maxCharacters = 10; // Adjust based on your expected number of characters
+                // Simulate loading characters dynamically
+                const maxCharacters = 10; // Adjust based on your total character count
                 const characters = [];
                 for (let i = 1; i <= maxCharacters; i++) {
                     characters.push(`${basePath}character${i}.png`);
                 }
 
-                // Load and display images
+                // Character selection logic
+                let player1Selection = null;
+                let player2Selection = null;
+
                 const characterSelectionDiv = document.getElementById('character-selection');
                 characters.forEach((imageSrc) => {
                     const img = new Image();
                     img.src = imageSrc;
                     img.className = 'character';
+
                     img.onerror = () => {
                         console.log(`Image not found: ${imageSrc}`);
                     };
+
                     img.onload = () => {
-                        img.addEventListener('click', () => {
-                            document.querySelectorAll('.character').forEach(c => c.classList.remove('selected'));
-                            img.classList.add('selected');
-                            console.log(`Selected character: ${imageSrc}`);
+                        img.addEventListener('click', (e) => {
+                            if (e.shiftKey) {
+                                // Player 2 selection
+                                if (player2Selection) {
+                                    player2Selection.classList.remove('selected-player2');
+                                }
+                                img.classList.add('selected-player2');
+                                player2Selection = img;
+                                console.log(`Player 2 selected: ${img.src}`);
+                            } else {
+                                // Player 1 selection
+                                if (player1Selection) {
+                                    player1Selection.classList.remove('selected-player1');
+                                }
+                                img.classList.add('selected-player1');
+                                player1Selection = img;
+                                console.log(`Player 1 selected: ${img.src}`);
+                            }
                         });
+
                         characterSelectionDiv.appendChild(img);
                     };
                 });
@@ -70,7 +98,7 @@
             }
         };
 
-        // Call the loader on page load
+        // Load characters when the page loads
         loadImages();
     </script>
 </body>
