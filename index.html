@@ -37,6 +37,37 @@
         // GitHub base path for assets
         const basePath = './assets/images/';
 
-        // Load JSON file with character images
-        fetch(basePath + 'images.json')
-            .then(r
+        // Function to load images dynamically using GitHub directory structure
+        async function loadCharacters() {
+            try {
+                // GitHub Pages can't list directories directly, so you need image names in advance
+                const characterImages = [
+                    'character1.png',
+                    'character2.png',
+                    'character3.png'
+                ];
+
+                // Display characters
+                const characterSelectionDiv = document.getElementById('character-selection');
+                characterImages.forEach(image => {
+                    const img = document.createElement('img');
+                    img.src = `${basePath}${image}`;
+                    img.className = 'character';
+                    img.alt = image.split('.')[0];
+                    img.addEventListener('click', () => {
+                        document.querySelectorAll('.character').forEach(c => c.classList.remove('selected'));
+                        img.classList.add('selected');
+                        console.log(`Selected: ${img.alt}`);
+                    });
+                    characterSelectionDiv.appendChild(img);
+                });
+            } catch (error) {
+                console.error('Error loading characters:', error);
+            }
+        }
+
+        // Load characters when the page loads
+        loadCharacters();
+    </script>
+</body>
+</html>
