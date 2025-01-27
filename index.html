@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tekken Game</title>
+    <title>Dynamic Character Loader</title>
     <style>
         body {
             background-color: #111;
@@ -21,8 +21,8 @@
         .character {
             width: 100px;
             height: 150px;
-            border: 2px solid transparent;
             cursor: pointer;
+            border: 2px solid transparent;
         }
         .character.selected {
             border-color: yellow;
@@ -32,31 +32,11 @@
 <body>
     <h1>Select Your Character</h1>
     <div class="character-selection" id="character-selection"></div>
+
     <script>
         // GitHub base path for assets
         const basePath = './assets/images/';
 
-        // Character images (add the names of all images in the folder)
-        const characterImages = [
-            'character1.png',
-            'character2.png',
-            'character3.png'
-        ];
-
-        // Dynamically load characters into the selection
-        const characterSelectionDiv = document.getElementById('character-selection');
-        characterImages.forEach(image => {
-            const img = document.createElement('img');
-            img.src = `${basePath}${image}`;
-            img.className = 'character';
-            img.alt = image.split('.')[0];
-            img.addEventListener('click', () => {
-                document.querySelectorAll('.character').forEach(c => c.classList.remove('selected'));
-                img.classList.add('selected');
-                console.log(`Selected: ${img.alt}`);
-            });
-            characterSelectionDiv.appendChild(img);
-        });
-    </script>
-</body>
-</html>
+        // Load JSON file with character images
+        fetch(basePath + 'images.json')
+            .then(r
