@@ -1,257 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tekken Game - Scaled Knockback with Dynamic Characters</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #111;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
-        canvas {
-            display: block;
-            margin: 20px auto;
-            border: 3px solid white;
-            background-color: black;
-        }
-        .character-selection {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 50px;
-        }
-        .character {
-            cursor: pointer;
-            border: 2px solid transparent;
-        }
-        .character.selected {
-            border-color: yellow;
-        }
-        #startGame {
-            display: none;
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: green;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-    <h1>Select Your Characters</h1>
-    <div class="character-selection"></div>
-    <button id="startGame">Start Game</button>
+<script>
+    const animationDuration = 800; // Animation duration in ms
+    const attackLock = {}; // Prevent multiple attacks during animation
 
-    <canvas id="gameCanvas" width="1400" height="800" style="display: none;"></canvas>
-    <div id="winner"></div>
+    function replaceSprite(player, action, callback) {
+        const originalSrc = player.img.src;
+        const actionSrc = originalSrc.replace(/(\w+)\.png$/, `${action}$1.png`);
+        player.img.src = actionSrc;
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const startGameButton = document.getElementById('startGame');
-        const winnerDiv = document.getElementById('winner');
+        setTimeout(() => {
+            player.img.src = originalSrc;
+            if (callback) callback();
+        }, animationDuration);
+    }
 
-        let player1 = null, player2 = null;
+    // Updated key bindings for attacks
+    window.addEventListener('keydown', e => {
+        const key = e.key.toLowerCase();
 
-        const createPlayer = (x, imgSrc, id) => ({
-            x,
-            y: 650,
-            width: 100,
-            height: 150,
-            img: new Image(),
-            id, // Unique identifier for animations
-            currentAnimation: null,
-            animationFrame: 0,
-            animationCooldown: false,
-            damage: 0,
-            knockbackX: 0,
-            knockbackY: 0,
-            isKnockedBack: false,
-            onGround: true,
-            isJumping: false,
-            jumpSpeed: 0
-        });
-
-        const gravity = 1;
-        const jumpStrength = 20;
-        const punchDamage = 6;
-        const kickDamage = 8;
-        const baseKnockbackMultiplier = 0.3;
-        const liftFactor = 0.2;
-        const keys = {};
-        const attackCooldown = {};
-
-        const characterSelectionDiv = document.querySelector('.character-selection');
-
-        const repoOwner = "Th3n3bul0n";
-        const repoName = "sl-sse-spill";
-        const imagePath = "assets/images/";
-        const githubApiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${imagePath}`;
-        const rawBaseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/${imagePath}`;
-
-        const animations = {}; // Store animations for each character ID
-
-        async function loadCharacters() {
-            try {
-                const response = await fetch(githubApiUrl);
-                const files = await response.json();
-                files.forEach(file => {
-                    if (file.name.endsWith('.png')) {
-                        if (file.name.includes('punch') || file.name.includes('kick')) {
-                            // Add animations
-                            const [type, id] = file.name.replace('.png', '').split(/(?=\d+$)/);
-                            if (!animations[id]) animations[id] = {};
-                            animations[id][type] = `${rawBaseUrl}${file.name}`;
-                        } else {
-                            // Add character images
-                            addCharacter(rawBaseUrl + file.name, file.name);
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error("Error fetching character images:", error);
-            }
-        }
-
-        function addCharacter(imageSrc, fileName) {
-            const charImg = document.createElement('img');
-            charImg.src = imageSrc;
-            charImg.className = 'character';
-            charImg.width = 100;
-            charImg.height = 150;
-            characterSelectionDiv.appendChild(charImg);
-
-            charImg.addEventListener('click', () => {
-                if (charImg.classList.contains('selected')) {
-                    charImg.classList.remove('selected');
-                    if (player1 && player1.img.src === charImg.src) player1 = null;
-                    if (player2 && player2.img.src === charImg.src) player2 = null;
-                    startGameButton.style.display = player1 && player2 ? 'block' : 'none';
-                    return;
-                }
-
-                if (!player1) {
-                    player1 = createPlayer(50, charImg.src, fileName.replace('.png', ''));
-                    player1.img.src = charImg.src;
-                    charImg.classList.add('selected');
-                } else if (!player2 && charImg.src !== player1.img.src) {
-                    player2 = createPlayer(1250, charImg.src, fileName.replace('.png', ''));
-                    player2.img.src = charImg.src;
-                    charImg.classList.add('selected');
-                }
-
-                startGameButton.style.display = player1 && player2 ? 'block' : 'none';
-            });
-        }
-
-        function playAnimation(player, type) {
-            const animationUrl = animations[player.id]?.[type];
-            if (!animationUrl) return; // No animation available for this type
-
-            const animationImg = new Image();
-            animationImg.src = animationUrl;
-            player.currentAnimation = animationImg;
-            player.animationCooldown = true;
-
-            setTimeout(() => {
-                player.currentAnimation = null;
-                player.animationCooldown = false;
-            }, 800);
-        }
-
-        startGameButton.addEventListener('click', () => {
-            characterSelectionDiv.style.display = 'none';
-            startGameButton.style.display = 'none';
-            canvas.style.display = 'block';
-            gameLoop();
-        });
-
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            [player1, player2].forEach(player => {
-                if (player.isKnockedBack) {
-                    player.x += player.knockbackX;
-                    player.y -= player.knockbackY;
-                    player.knockbackY -= liftFactor;
-
-                    if (player.y >= 650) {
-                        player.y = 650;
-                        player.isKnockedBack = false;
-                        player.knockbackX = 0;
-                        player.knockbackY = 0;
-                    }
-                }
-
-                if (player.isJumping) {
-                    player.y += player.jumpSpeed;
-                    player.jumpSpeed += gravity;
-
-                    if (player.y >= 650) {
-                        player.y = 650;
-                        player.isJumping = false;
-                        player.onGround = true;
-                    }
-                }
-            });
-
-            if (keys['q'] && !player1.animationCooldown) {
-                playAnimation(player1, "punch");
+        // Player 1 attacks
+        if (key === 'q' && !attackLock['q']) {
+            attackLock['q'] = true;
+            replaceSprite(player1, 'punch', () => {
                 applyKnockback(player2, punchDamage, player2.damage);
-            }
-            if (keys['e'] && !player1.animationCooldown) {
-                playAnimation(player1, "kick");
+                attackLock['q'] = false;
+            });
+        } else if (key === 'e' && !attackLock['e']) {
+            attackLock['e'] = true;
+            replaceSprite(player1, 'kick', () => {
                 applyKnockback(player2, kickDamage, player2.damage);
-            }
-            if (keys['m'] && !player2.animationCooldown) {
-                playAnimation(player2, "punch");
+                attackLock['e'] = false;
+            });
+        }
+
+        // Player 2 attacks
+        if (key === 'm' && !attackLock['m']) {
+            attackLock['m'] = true;
+            replaceSprite(player2, 'punch', () => {
                 applyKnockback(player1, punchDamage, player1.damage);
-            }
-            if (keys['n'] && !player2.animationCooldown) {
-                playAnimation(player2, "kick");
+                attackLock['m'] = false;
+            });
+        } else if (key === 'n' && !attackLock['n']) {
+            attackLock['n'] = true;
+            replaceSprite(player2, 'kick', () => {
                 applyKnockback(player1, kickDamage, player1.damage);
-            }
-
-            drawPlayer(player1);
-            drawPlayer(player2);
-            drawDamage(player1, 50);
-            drawDamage(player2, 1250);
-
-            requestAnimationFrame(gameLoop);
+                attackLock['n'] = false;
+            });
         }
-
-        function applyKnockback(player, damage, currentDamage) {
-            player.damage += damage;
-            const totalKnockback = (baseKnockbackMultiplier + currentDamage * 0.01) * damage;
-            player.knockbackX = totalKnockback * (player === player1 ? -1 : 1);
-            player.knockbackY = totalKnockback * liftFactor;
-            player.isKnockedBack = true;
-        }
-
-        function drawPlayer(player) {
-            if (player.currentAnimation) {
-                ctx.drawImage(player.currentAnimation, player.x, player.y, player.width, player.height);
-            } else {
-                ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
-            }
-        }
-
-        function drawDamage(player, x) {
-            ctx.fillStyle = 'white';
-            ctx.fillText(`Damage: ${player.damage.toFixed(1)}%`, x, 50);
-        }
-
-        window.addEventListener('keydown', e => (keys[e.key] = true));
-        window.addEventListener('keyup', e => (keys[e.key] = false));
-
-        loadCharacters();
-    </script>
-</body>
-</html>
+    });
+</script>
