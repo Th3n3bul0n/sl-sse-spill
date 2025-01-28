@@ -1,14 +1,18 @@
 <script>
-    const animationDuration = 800; // Animation duration in ms
-    const attackLock = {}; // Prevents multiple attacks during animation
+    const animationDuration = 800; // Varighet for animasjoner i millisekunder
+    const attackLock = {}; // Hindrer at angrep skjer før forrige animasjon er ferdig
 
     function replaceSprite(player, action, callback) {
+        if (!player || !player.img) return; // Sikrer at spiller og bilde er initialisert
         const originalSrc = player.img.src;
-        const actionSrc = originalSrc.replace(/(\w+)\.png$/, `${action}$1.png`); // Generates attack sprite URL
-        player.img.src = actionSrc; // Sets attack sprite
+        const actionSrc = originalSrc.replace(/(\\w+)\\.png$/, `${action}$1.png`); // Dynamisk sprite-bytting
+
+        // Bytt til angrepssprite
+        player.img.src = actionSrc;
 
         setTimeout(() => {
-            player.img.src = originalSrc; // Reverts back to the original sprite
+            // Tilbakestill til original sprite
+            player.img.src = originalSrc;
             if (callback) callback();
         }, animationDuration);
     }
@@ -16,7 +20,7 @@
     window.addEventListener('keydown', e => {
         const key = e.key.toLowerCase();
 
-        // Player 1 attacks
+        // Player 1 angrep
         if (key === 'q' && !attackLock['q']) {
             attackLock['q'] = true;
             replaceSprite(player1, 'punch', () => {
@@ -31,7 +35,7 @@
             });
         }
 
-        // Player 2 attacks
+        // Player 2 angrep
         if (key === 'm' && !attackLock['m']) {
             attackLock['m'] = true;
             replaceSprite(player2, 'punch', () => {
@@ -46,4 +50,11 @@
             });
         }
     });
+
+    // Sikrer at spillere blir tegnet på riktig måte
+    function drawPlayer(player) {
+        if (player && player.img.complete) {
+            ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
+        }
+    }
 </script>
