@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tekken Game - Full Mechanics</title>
+    <title>Tekken Game - Full Mechanics with Character Selector</title>
     <style>
         body {
             margin: 0;
@@ -42,22 +42,6 @@
             border: none;
             cursor: pointer;
         }
-        .health-bar {
-            width: 300px;
-            height: 20px;
-            background-color: red;
-            position: absolute;
-            top: 20px;
-            text-align: center;
-            color: white;
-            font-weight: bold;
-        }
-        #healthP1 {
-            left: 50px;
-        }
-        #healthP2 {
-            right: 50px;
-        }
     </style>
 </head>
 <body>
@@ -65,8 +49,6 @@
     <div class="character-selection"></div>
     <button id="startGame">Start Game</button>
 
-    <div id="healthP1" class="health-bar">100%</div>
-    <div id="healthP2" class="health-bar">100%</div>
     <canvas id="gameCanvas" width="1400" height="800" style="display: none;"></canvas>
     <div id="winner"></div>
 
@@ -75,13 +57,10 @@
         const ctx = canvas.getContext('2d');
         const startGameButton = document.getElementById('startGame');
         const winnerDiv = document.getElementById('winner');
-        const healthP1 = document.getElementById('healthP1');
-        const healthP2 = document.getElementById('healthP2');
-
-        let player1 = null, player2 = null;
         const characterSelectionDiv = document.querySelector('.character-selection');
         const keys = {};
 
+        let player1 = null, player2 = null;
         const repoOwner = "Th3n3bul0n";
         const repoName = "sl-sse-spill";
         const imagePath = "assets/images/";
@@ -132,47 +111,106 @@
         }
 
         function createPlayer(x, imgSrc) {
-            return {
+            const player = {
                 x,
                 y: 650,
                 width: 100,
                 height: 150,
                 img: new Image(),
-                health: 100,
                 damage: 0,
+                health: 100,
+                isKnockedBack: false,
+                knockbackX: 0,
+                knockbackY: 0,
                 onGround: true,
                 isJumping: false,
-                jumpSpeed: 0
+                jumpSpeed: 0,
             };
+            player.img.src = imgSrc;
+            return player;
         }
 
         startGameButton.addEventListener('click', () => {
             characterSelectionDiv.style.display = 'none';
             startGameButton.style.display = 'none';
             canvas.style.display = 'block';
-            healthP1.style.display = 'block';
-            healthP2.style.display = 'block';
             gameLoop();
         });
 
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            handleMovement(player1, 'a', 'd', 'w');
+            handleMovement(player2, 'ArrowLeft', 'ArrowRight', 'ArrowUp');
+
             drawPlayer(player1);
             drawPlayer(player2);
-            updateHealthBars();
+            checkCollision(player1, player2);
+            checkCollision(player2, player1);
+
             requestAnimationFrame(gameLoop);
         }
 
-        function drawPlayer(player) {
-            if (player && player.img.complete) {
-                ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
+        function handleMovement(player, left, right, jump) {
+            if (!player) return;
+
+            if (keys[left] && player.x > 0) player.x -= 5;
+            if (keys[right] && player.x < canvas.width - player.width) player.x += 5;
+
+            if (keys[jump] && player.onGround) {
+                player.isJumping = true;
+                player.jumpSpeed = -15;
+                player.onGround = false;
+            }
+
+            if (player.isJumping) {
+                player.y += player.jumpSpeed;
+                player.jumpSpeed += 1;
+                if (player.y >= 650) {
+                    player.y = 650;
+                    player.isJumping = false;
+                    player.onGround = true;
+                }
             }
         }
 
-        function updateHealthBars() {
-            healthP1.textContent = player1 ? `${player1.health}%` : "100%";
-            healthP2.textContent = player2 ? `${player2.health}%` : "100%";
+        function drawPlayer(player) {
+            if (!player) return;
+            ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
+
+            // Draw health bar
+            ctx.fillStyle = 'red';
+            ctx.fillRect(player.x, player.y - 20, player.width, 10);
+            ctx.fillStyle = 'green';
+            ctx.fillRect(player.x, player.y - 20, (player.health / 100) * player.width, 10);
         }
+
+        function checkCollision(attacker, defender) {
+            if (!attacker || !defender) return;
+
+            const isColliding =
+                attacker.x < defender.x + defender.width &&
+                attacker.x + attacker.width > defender.x &&
+                attacker.y < defender.y + defender.height &&
+                attacker.y + attacker.height > defender.y;
+
+            if (isColliding && keys[' ']) {
+                defender.health -= 1;
+                defender.knockbackX = (defender.x > attacker.x ? 1 : -1) * 10;
+                defender.isKnockedBack = true;
+            }
+
+            if (defender.isKnockedBack) {
+                defender.x += defender.knockbackX;
+                defender.knockbackX *= 0.9; // Gradually reduce knockback
+
+                if (Math.abs(defender.knockbackX) < 0.1) {
+                    defender.isKnockedBack = false;
+                }
+            }
+        }
+
+        window.addEventListener('keydown', (e) => (keys[e.key] = true));
+        window.addEventListener('keyup', (e) => (keys[e.key] = false));
 
         loadCharacters();
     </script>
