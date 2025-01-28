@@ -1,33 +1,36 @@
 <script>
-    const animationDuration = 800; // Varighet for animasjoner i millisekunder
-    const attackLock = {}; // Hindrer at angrep skjer før forrige animasjon er ferdig
+    const animationDuration = 800; // Animation duration in milliseconds
+    const attackLock = {}; // Prevents multiple attacks during animation
 
+    // Function to replace the character's sprite with an attack sprite
     function replaceSprite(player, action, callback) {
-        if (!player || !player.img) return; // Sikrer at spiller og bilde er initialisert
-        const originalSrc = player.img.src;
-        const actionSrc = originalSrc.replace(/(\\w+)\\.png$/, `${action}$1.png`); // Dynamisk sprite-bytting
+        if (!player || !player.img) return; // Prevent errors if player or image is not initialized
 
-        // Bytt til angrepssprite
+        const originalSrc = player.img.src; // Store the original sprite
+        const actionSrc = originalSrc.replace(/(\w+)\.png$/, `${action}$1.png`); // Generate the attack sprite
+
+        // Update the sprite to the attack image
         player.img.src = actionSrc;
 
+        // Reset the sprite after the animation duration
         setTimeout(() => {
-            // Tilbakestill til original sprite
             player.img.src = originalSrc;
-            if (callback) callback();
+            if (callback) callback(); // Run the callback function (e.g., apply damage)
         }, animationDuration);
     }
 
+    // Handle keydown events for player actions
     window.addEventListener('keydown', e => {
         const key = e.key.toLowerCase();
 
-        // Player 1 angrep
-        if (key === 'q' && !attackLock['q']) {
+        // Player 1 attacks
+        if (key === 'q' && player1 && !attackLock['q']) {
             attackLock['q'] = true;
             replaceSprite(player1, 'punch', () => {
                 applyKnockback(player2, punchDamage, player2.damage);
                 attackLock['q'] = false;
             });
-        } else if (key === 'e' && !attackLock['e']) {
+        } else if (key === 'e' && player1 && !attackLock['e']) {
             attackLock['e'] = true;
             replaceSprite(player1, 'kick', () => {
                 applyKnockback(player2, kickDamage, player2.damage);
@@ -35,14 +38,14 @@
             });
         }
 
-        // Player 2 angrep
-        if (key === 'm' && !attackLock['m']) {
+        // Player 2 attacks
+        if (key === 'm' && player2 && !attackLock['m']) {
             attackLock['m'] = true;
             replaceSprite(player2, 'punch', () => {
                 applyKnockback(player1, punchDamage, player1.damage);
                 attackLock['m'] = false;
             });
-        } else if (key === 'n' && !attackLock['n']) {
+        } else if (key === 'n' && player2 && !attackLock['n']) {
             attackLock['n'] = true;
             replaceSprite(player2, 'kick', () => {
                 applyKnockback(player1, kickDamage, player1.damage);
@@ -51,7 +54,7 @@
         }
     });
 
-    // Sikrer at spillere blir tegnet på riktig måte
+    // Ensure players are drawn correctly even with animations
     function drawPlayer(player) {
         if (player && player.img.complete) {
             ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
