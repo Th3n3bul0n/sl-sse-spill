@@ -96,13 +96,23 @@
         const githubApiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${imagePath}`;
         const rawBaseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/${imagePath}`;
 
+        const animations = {}; // Store animations for each character ID
+
         async function loadCharacters() {
             try {
                 const response = await fetch(githubApiUrl);
                 const files = await response.json();
                 files.forEach(file => {
-                    if (file.name.endsWith('.png') && !file.name.includes('punch') && !file.name.includes('kick')) {
-                        addCharacter(rawBaseUrl + file.name, file.name);
+                    if (file.name.endsWith('.png')) {
+                        if (file.name.includes('punch') || file.name.includes('kick')) {
+                            // Add animations
+                            const [type, id] = file.name.replace('.png', '').split(/(?=\d+$)/);
+                            if (!animations[id]) animations[id] = {};
+                            animations[id][type] = `${rawBaseUrl}${file.name}`;
+                        } else {
+                            // Add character images
+                            addCharacter(rawBaseUrl + file.name, file.name);
+                        }
                     }
                 });
             } catch (error) {
@@ -142,11 +152,12 @@
         }
 
         function playAnimation(player, type) {
-            const animationName = `${type}${player.id}`; // e.g., "punch1" or "kick2"
+            const animationUrl = animations[player.id]?.[type];
+            if (!animationUrl) return; // No animation available for this type
+
             const animationImg = new Image();
-            animationImg.src = `${rawBaseUrl}${animationName}.png`;
+            animationImg.src = animationUrl;
             player.currentAnimation = animationImg;
-            player.animationFrame = 0;
             player.animationCooldown = true;
 
             setTimeout(() => {
