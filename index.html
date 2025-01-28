@@ -60,6 +60,7 @@
 
         let player1 = null, player2 = null;
         const characterSelectionDiv = document.querySelector('.character-selection');
+        const keys = {};
 
         const repoOwner = "Th3n3bul0n";
         const repoName = "sl-sse-spill";
@@ -99,12 +100,10 @@
                 }
 
                 if (!player1) {
-                    player1 = createPlayer(50, charImg.src);
-                    player1.img.src = charImg.src;
+                    player1 = createPlayer(200, charImg.src);
                     charImg.classList.add('selected');
                 } else if (!player2 && charImg.src !== player1.img.src) {
-                    player2 = createPlayer(1250, charImg.src);
-                    player2.img.src = charImg.src;
+                    player2 = createPlayer(1000, charImg.src);
                     charImg.classList.add('selected');
                 }
 
@@ -138,9 +137,31 @@
 
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            handleMovement(player1, 'a', 'd', 'w');
+            handleMovement(player2, 'ArrowLeft', 'ArrowRight', 'ArrowUp');
             drawPlayer(player1);
             drawPlayer(player2);
             requestAnimationFrame(gameLoop);
+        }
+
+        function handleMovement(player, left, right, jump) {
+            if (keys[left] && player.x > 0) player.x -= 5;
+            if (keys[right] && player.x < canvas.width - player.width) player.x += 5;
+            if (keys[jump] && player.onGround) {
+                player.isJumping = true;
+                player.jumpSpeed = -15;
+                player.onGround = false;
+            }
+
+            if (player.isJumping) {
+                player.y += player.jumpSpeed;
+                player.jumpSpeed += 1;
+                if (player.y >= 650) {
+                    player.y = 650;
+                    player.isJumping = false;
+                    player.onGround = true;
+                }
+            }
         }
 
         function drawPlayer(player) {
@@ -148,6 +169,9 @@
                 ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
             }
         }
+
+        window.addEventListener('keydown', e => (keys[e.key] = true));
+        window.addEventListener('keyup', e => (keys[e.key] = false));
 
         loadCharacters();
     </script>
