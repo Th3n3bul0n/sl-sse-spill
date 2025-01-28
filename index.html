@@ -3,13 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Character Loader</title>
+    <title>Tekken Game - Scaled Knockback</title>
     <style>
         body {
+            margin: 0;
+            padding: 0;
             background-color: #111;
-            color: white;
+            color: #fff;
             font-family: Arial, sans-serif;
             text-align: center;
+        }
+        canvas {
+            display: block;
+            margin: 20px auto;
+            border: 3px solid white;
+            background-color: black;
         }
         .character-selection {
             display: flex;
@@ -19,19 +27,11 @@
             margin-top: 50px;
         }
         .character {
-            width: 100px;
-            height: 150px;
             cursor: pointer;
             border: 2px solid transparent;
         }
-        .character.selected-player1 {
-            border-color: red;
-        }
-        .character.selected-player2 {
-            border-color: blue;
-        }
-        .instructions {
-            margin-top: 20px;
+        .character.selected {
+            border-color: yellow;
         }
         #startGame {
             display: none;
@@ -42,60 +42,111 @@
             border: none;
             cursor: pointer;
         }
-        #startGame:disabled {
-            background-color: gray;
-            cursor: not-allowed;
-        }
-        #gameArea {
-            display: none;
-            margin-top: 50px;
-        }
-        #gameArea img {
-            width: 150px;
-            height: 200px;
-            margin: 0 20px;
-        }
     </style>
 </head>
 <body>
     <h1>Select Your Characters</h1>
-    <p class="instructions">Player 1: Click to select your character (red border).<br>
-    Player 2: Shift + Click to select your character (blue border).</p>
-    <div class="character-selection" id="character-selection"></div>
-    <button id="startGame" disabled>Start Game</button>
-    <div id="gameArea">
-        <h2>Game Area</h2>
-        <div id="players">
-            <img id="player1" src="" alt="Player 1">
-            <img id="player2" src="" alt="Player 2">
-        </div>
-    </div>
+    <div class="character-selection"></div>
+    <button id="startGame">Start Game</button>
+
+    <canvas id="gameCanvas" width="1400" height="800" style="display: none;"></canvas>
+    <div id="winner"></div>
 
     <script>
-        // Base path for images
-        const basePath = './assets/images/';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startGameButton = document.getElementById('startGame');
+        const winnerDiv = document.getElementById('winner');
 
-        // Function to load images dynamically
-        const loadImages = async () => {
-            try {
-                // Simulate loading characters dynamically
-                const maxCharacters = 10; // Adjust based on your total character count
-                const characters = [];
-                for (let i = 1; i <= maxCharacters; i++) {
-                    characters.push(`${basePath}character${i}.png`);
+        let player1 = null, player2 = null;
+        const characterSelectionDiv = document.querySelector('.character-selection');
+
+        const imagePath = "assets/images/";
+        const characters = ["assets/images/Anna.png", "assets/images/Anna-ovedie.png"]; // Manually added initial images
+
+        function populateCharacterSelection() {
+            characters.forEach(imageSrc => {
+                const charImg = document.createElement('img');
+                charImg.src = imageSrc;
+                charImg.className = 'character';
+                charImg.width = 100;
+                charImg.height = 150;
+                characterSelectionDiv.appendChild(charImg);
+
+                charImg.addEventListener('click', () => {
+                    if (charImg.classList.contains('selected')) {
+                        charImg.classList.remove('selected');
+                        if (player1 && player1.img.src === charImg.src) player1 = null;
+                        if (player2 && player2.img.src === charImg.src) player2 = null;
+                        startGameButton.style.display = player1 && player2 ? 'block' : 'none';
+                        return;
+                    }
+
+                    if (!player1) {
+                        player1 = createPlayer(50, charImg.src);
+                        charImg.classList.add('selected');
+                    } else if (!player2 && charImg.src !== player1.img.src) {
+                        player2 = createPlayer(1250, charImg.src);
+                        charImg.classList.add('selected');
+                    }
+
+                    startGameButton.style.display = player1 && player2 ? 'block' : 'none';
+                });
+            });
+        }
+
+        function createPlayer(x, imgSrc) {
+            return {
+                x,
+                y: 650,
+                width: 100,
+                height: 150,
+                img: new Image(),
+                damage: 0,
+                knockbackX: 0,
+                knockbackY: 0,
+                isKnockedBack: false,
+                onGround: true,
+                isJumping: false,
+                jumpSpeed: 0
+            };
+        }
+
+        startGameButton.addEventListener('click', () => {
+            characterSelectionDiv.style.display = 'none';
+            startGameButton.style.display = 'none';
+            canvas.style.display = 'block';
+            gameLoop();
+        });
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            [player1, player2].forEach(player => {
+                if (player.isKnockedBack) {
+                    player.x += player.knockbackX;
+                    player.y -= player.knockbackY;
+                    player.knockbackY -= 0.2;
+
+                    if (player.y >= 650) {
+                        player.y = 650;
+                        player.isKnockedBack = false;
+                        player.knockbackX = 0;
+                        player.knockbackY = 0;
+                    }
                 }
+            });
 
-                // Character selection logic
-                let player1Selection = null;
-                let player2Selection = null;
+            drawPlayer(player1);
+            drawPlayer(player2);
+            requestAnimationFrame(gameLoop);
+        }
 
-                const characterSelectionDiv = document.getElementById('character-selection');
-                const startGameButton = document.getElementById('startGame');
-                const gameArea = document.getElementById('gameArea');
-                const player1Image = document.getElementById('player1');
-                const player2Image = document.getElementById('player2');
+        function drawPlayer(player) {
+            if (player) ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
+        }
 
-                const updateStartButton = () => {
-                    if (player1Selection && player2Selection) {
-                        startGameButton.disabled = false;
-                        startGameButton.sty
+        populateCharacterSelection();
+    </script>
+</body>
+</html>
