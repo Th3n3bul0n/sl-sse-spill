@@ -48,7 +48,6 @@
     <h1>Select Your Characters</h1>
     <div class="character-selection"></div>
     <button id="startGame">Start Game</button>
-
     <canvas id="gameCanvas" width="1400" height="800" style="display: none;"></canvas>
     <div id="winner"></div>
 
@@ -59,6 +58,14 @@
         const winnerDiv = document.getElementById('winner');
 
         let player1 = null, player2 = null;
+        const attackLock = {}; // Prevent multiple attacks during animation
+        const keys = {};
+        const gravity = 1;
+        const jumpStrength = 20;
+        const punchDamage = 6;
+        const kickDamage = 8;
+        const baseKnockbackMultiplier = 0.3;
+        const liftFactor = 0.2;
 
         const createPlayer = (x, imgSrc) => ({
             x,
@@ -66,7 +73,7 @@
             width: 100,
             height: 150,
             img: new Image(),
-            damage: 0, // Start at 0% damage
+            damage: 0,
             knockbackX: 0,
             knockbackY: 0,
             isKnockedBack: false,
@@ -74,16 +81,6 @@
             isJumping: false,
             jumpSpeed: 0
         });
-
-        const gravity = 1;
-        const jumpStrength = 20; // Jump strength for players
-        const punchDamage = 6; // 6% damage
-        const kickDamage = 8;  // 8% damage
-        const baseKnockbackMultiplier = 0.3; // Base knockback scaling
-        const liftFactor = 0.2; // Lift effect on knockback
-        const keys = {};
-        const attackCooldown = {}; // Cooldown to prevent holding attack buttons
-        const attackLock = {}; // Prevent multiple attacks during animation
 
         const characterSelectionDiv = document.querySelector('.character-selection');
 
@@ -98,7 +95,8 @@
                 const response = await fetch(githubApiUrl);
                 const files = await response.json();
                 files.forEach(file => {
-                    if (file.name.endsWith('.png')) {
+                    // Exclude punch/kick sprites from appearing in character selection
+                    if (file.name.endsWith('.png') && !file.name.startsWith('punch') && !file.name.startsWith('kick')) {
                         addCharacter(rawBaseUrl + file.name);
                     }
                 });
@@ -145,98 +143,6 @@
             gameLoop();
         });
 
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Handle knockback and jumping for both players
-            [player1, player2].forEach(player => {
-                if (player.isKnockedBack) {
-                    player.x += player.knockbackX;
-                    player.y -= player.knockbackY; // Add lift effect
-                    player.knockbackY -= liftFactor; // Reduce lift gradually
-
-                    // Stop knockback when player hits the ground
-                    if (player.y >= 650) {
-                        player.y = 650;
-                        player.isKnockedBack = false;
-                        player.knockbackX = 0;
-                        player.knockbackY = 0;
-                    }
-                }
-
-                // Apply gravity when jumping
-                if (player.isJumping) {
-                    player.y += player.jumpSpeed;
-                    player.jumpSpeed += gravity;
-
-                    if (player.y >= 650) {
-                        player.y = 650;
-                        player.isJumping = false;
-                        player.onGround = true;
-                    }
-                }
-            });
-
-            // Player 1 controls
-            if (keys['a'] && player1.x > 0 && !player1.isKnockedBack) player1.x -= 5;
-            if (keys['d'] && player1.x < canvas.width - player1.width && !player1.isKnockedBack) player1.x += 5;
-            if (keys['w'] && player1.onGround) {
-                player1.isJumping = true;
-                player1.jumpSpeed = -jumpStrength;
-                player1.onGround = false;
-            }
-
-            // Player 2 controls
-            if (keys['ArrowLeft'] && player2.x > 0 && !player2.isKnockedBack) player2.x -= 5;
-            if (keys['ArrowRight'] && player2.x < canvas.width - player2.width && !player2.isKnockedBack) player2.x += 5;
-            if (keys['ArrowUp'] && player2.onGround) {
-                player2.isJumping = true;
-                player2.jumpSpeed = -jumpStrength;
-                player2.onGround = false;
-            }
-
-            // Handle attacks
-            if (isColliding(player1, player2)) {
-                if (keys['q'] && !attackCooldown['q']) {
-                    applyKnockback(player2, punchDamage, player2.damage);
-                    attackCooldown['q'] = true;
-                    setTimeout(() => (attackCooldown['q'] = false), 300); // 300ms cooldown
-                }
-                if (keys['e'] && !attackCooldown['e']) {
-                    applyKnockback(player2, kickDamage, player2.damage);
-                    attackCooldown['e'] = true;
-                    setTimeout(() => (attackCooldown['e'] = false), 300); // 300ms cooldown
-                }
-                if (keys['m'] && !attackCooldown['m']) {
-                    applyKnockback(player1, punchDamage, player1.damage);
-                    attackCooldown['m'] = true;
-                    setTimeout(() => (attackCooldown['m'] = false), 300); // 300ms cooldown
-                }
-                if (keys['n'] && !attackCooldown['n']) {
-                    applyKnockback(player1, kickDamage, player1.damage);
-                    attackCooldown['n'] = true;
-                    setTimeout(() => (attackCooldown['n'] = false), 300); // 300ms cooldown
-                }
-            }
-
-            // Draw players and damage indicators
-            drawPlayer(player1);
-            drawPlayer(player2);
-            drawDamage(player1, 50);
-            drawDamage(player2, 1250);
-
-            // Check for winner
-            if (player1.x <= 0 || player1.x >= canvas.width) {
-                winnerDiv.textContent = 'Player 2 Wins!';
-                return;
-            } else if (player2.x <= 0 || player2.x >= canvas.width) {
-                winnerDiv.textContent = 'Player 1 Wins!';
-                return;
-            }
-
-            requestAnimationFrame(gameLoop);
-        }
-
         function replaceSprite(player, action, callback) {
             if (!player || !player.img) return;
             const originalSrc = player.img.src;
@@ -253,36 +159,31 @@
             if (key === 'q' && player1 && !attackLock['q']) {
                 attackLock['q'] = true;
                 replaceSprite(player1, 'punch', () => {
-                    applyKnockback(player2, punchDamage, player2.damage);
                     attackLock['q'] = false;
                 });
             } else if (key === 'e' && player1 && !attackLock['e']) {
                 attackLock['e'] = true;
                 replaceSprite(player1, 'kick', () => {
-                    applyKnockback(player2, kickDamage, player2.damage);
                     attackLock['e'] = false;
                 });
             } else if (key === 'm' && player2 && !attackLock['m']) {
                 attackLock['m'] = true;
                 replaceSprite(player2, 'punch', () => {
-                    applyKnockback(player1, punchDamage, player1.damage);
                     attackLock['m'] = false;
                 });
             } else if (key === 'n' && player2 && !attackLock['n']) {
                 attackLock['n'] = true;
                 replaceSprite(player2, 'kick', () => {
-                    applyKnockback(player1, kickDamage, player1.damage);
                     attackLock['n'] = false;
                 });
             }
         });
 
-        function applyKnockback(player, damage, currentDamage) {
-            player.damage += damage;
-            const totalKnockback = (baseKnockbackMultiplier + currentDamage * 0.01) * damage;
-            player.knockbackX = totalKnockback * (player === player1 ? -1 : 1);
-            player.knockbackY = totalKnockback * liftFactor;
-            player.isKnockedBack = true;
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawPlayer(player1);
+            drawPlayer(player2);
+            requestAnimationFrame(gameLoop);
         }
 
         function drawPlayer(player) {
@@ -290,23 +191,6 @@
                 ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
             }
         }
-
-        function drawDamage(player, x) {
-            ctx.fillStyle = 'white';
-            ctx.fillText(`Damage: ${player.damage.toFixed(1)}%`, x, 50);
-        }
-
-        function isColliding(p1, p2) {
-            return (
-                p1.x < p2.x + p2.width &&
-                p1.x + p1.width > p2.x &&
-                p1.y < p2.y + p2.height &&
-                p1.y + p1.height > p2.y
-            );
-        }
-
-        window.addEventListener('keydown', e => (keys[e.key] = true));
-        window.addEventListener('keyup', e => (keys[e.key] = false));
 
         loadCharacters();
     </script>
