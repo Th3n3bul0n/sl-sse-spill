@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tekken Game - Scaled Knockback</title>
+    <title>Tekken Game - All Characters</title>
     <style>
         body {
             margin: 0;
@@ -49,7 +49,7 @@
     <div class="character-selection"></div>
     <button id="startGame">Start Game</button>
 
-    <canvas id="gameCanvas" width="1400" height="800" style="display: none;"></canvas>
+    <canvas id="gameCanvas" width="800" height="400" style="display: none;"></canvas>
     <div id="winner"></div>
 
     <script>
@@ -59,40 +59,124 @@
         const winnerDiv = document.getElementById('winner');
 
         let player1 = null, player2 = null;
+
+        const createPlayer = (x, imgSrc) => ({
+            x,
+            y: 250,
+            width: 100,
+            height: 150,
+            img: new Image(),
+            hp: 100,
+            isJumping: false,
+            jumpSpeed: 0,
+            onGround: true
+        });
+
+        const gravity = 1;
+        const jumpStrength = 15;
+        const movementSpeed = 5;
+        const punchDamage = 10;
+        const kickDamage = 15;
+        const keys = {};
+
         const characterSelectionDiv = document.querySelector('.character-selection');
+        const characterImages = [
+            './assets/images/Anna.png',
+            './assets/images/Anna-ovedie.png'
+        ];
 
-        const imagePath = "assets/images/";
-        const characters = [];
+        characterImages.forEach(imageSrc => {
+            const charImg = document.createElement('img');
+            charImg.src = imageSrc;
+            charImg.className = 'character';
+            charImg.width = 100;
+            charImg.height = 150;
+            characterSelectionDiv.appendChild(charImg);
 
-        async function loadCharacters() {
-            const response = await fetch(imagePath);
-            const text = await response.text();
-            const parser = new DOMParser();
-            const htmlDoc = parser.parseFromString(text, 'text/html');
-            const links = htmlDoc.querySelectorAll('a');
+            charImg.addEventListener('click', () => {
+                if (charImg.classList.contains('selected')) {
+                    charImg.classList.remove('selected');
+                    if (player1 && player1.img.src === charImg.src) player1 = null;
+                    if (player2 && player2.img.src === charImg.src) player2 = null;
+                    startGameButton.style.display = player1 && player2 ? 'block' : 'none';
+                    return;
+                }
 
-            links.forEach(link => {
-                const href = link.getAttribute('href');
-                if (href.endsWith('.png')) {
-                    characters.push(imagePath + href);
+                if (!player1) {
+                    player1 = createPlayer(50, charImg.src);
+                    player1.img.src = charImg.src;
+                    charImg.classList.add('selected');
+                } else if (!player2 && charImg.src !== player1.img.src) {
+                    player2 = createPlayer(650, charImg.src);
+                    player2.img.src = charImg.src;
+                    charImg.classList.add('selected');
+                }
+
+                startGameButton.style.display = player1 && player2 ? 'block' : 'none';
+            });
+        });
+
+        startGameButton.addEventListener('click', () => {
+            characterSelectionDiv.style.display = 'none';
+            startGameButton.style.display = 'none';
+            canvas.style.display = 'block';
+            gameLoop();
+        });
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (keys['a'] && player1.x > 0) player1.x -= movementSpeed;
+            if (keys['d'] && player1.x < canvas.width - player1.width) player1.x += movementSpeed;
+            if (keys['w'] && player1.onGround) {
+                player1.isJumping = true;
+                player1.jumpSpeed = -jumpStrength;
+                player1.onGround = false;
+            }
+
+            if (keys['ArrowLeft'] && player2.x > 0) player2.x -= movementSpeed;
+            if (keys['ArrowRight'] && player2.x < canvas.width - player2.width) player2.x += movementSpeed;
+            if (keys['ArrowUp'] && player2.onGround) {
+                player2.isJumping = true;
+                player2.jumpSpeed = -jumpStrength;
+                player2.onGround = false;
+            }
+
+            [player1, player2].forEach(player => {
+                if (player.isJumping) {
+                    player.y += player.jumpSpeed;
+                    player.jumpSpeed += gravity;
+                    if (player.y >= 250) {
+                        player.y = 250;
+                        player.isJumping = false;
+                        player.onGround = true;
+                    }
                 }
             });
 
-            populateCharacterSelection();
+            if (isColliding(player1, player2)) {
+                if (keys['q']) player2.hp = Math.max(0, player2.hp - punchDamage);
+                if (keys['e']) player2.hp = Math.max(0, player2.hp - kickDamage);
+
+                if (keys['m']) player1.hp = Math.max(0, player1.hp - punchDamage);
+                if (keys['n']) player1.hp = Math.max(0, player1.hp - kickDamage);
+            }
+
+            drawPlayer(player1);
+            drawPlayer(player2);
+            updateHPBar(player1, 50);
+            updateHPBar(player2, 650);
+
+            if (player1.hp === 0 || player2.hp === 0) {
+                winnerDiv.textContent = player1.hp === 0 ? 'Player 2 Wins!' : 'Player 1 Wins!';
+                return;
+            }
+
+            requestAnimationFrame(gameLoop);
         }
 
-        function populateCharacterSelection() {
-            characters.forEach(imageSrc => {
-                const charImg = document.createElement('img');
-                charImg.src = imageSrc;
-                charImg.className = 'character';
-                charImg.width = 100;
-                charImg.height = 150;
-                characterSelectionDiv.appendChild(charImg);
-            });
+        function drawPlayer(player) {
+            ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
         }
 
-        loadCharacters();
-    </script>
-</body>
-</html>
+        
