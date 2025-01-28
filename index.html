@@ -62,7 +62,24 @@
         const characterSelectionDiv = document.querySelector('.character-selection');
 
         const imagePath = "assets/images/";
-        const characters = ["assets/images/Anna.png", "assets/images/Anna-ovedie.png"]; // Manually added initial images
+        const characters = [];
+
+        async function loadCharacters() {
+            const response = await fetch(imagePath);
+            const text = await response.text();
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(text, 'text/html');
+            const links = htmlDoc.querySelectorAll('a');
+
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href.endsWith('.png')) {
+                    characters.push(imagePath + href);
+                }
+            });
+
+            populateCharacterSelection();
+        }
 
         function populateCharacterSelection() {
             characters.forEach(imageSrc => {
@@ -72,81 +89,10 @@
                 charImg.width = 100;
                 charImg.height = 150;
                 characterSelectionDiv.appendChild(charImg);
-
-                charImg.addEventListener('click', () => {
-                    if (charImg.classList.contains('selected')) {
-                        charImg.classList.remove('selected');
-                        if (player1 && player1.img.src === charImg.src) player1 = null;
-                        if (player2 && player2.img.src === charImg.src) player2 = null;
-                        startGameButton.style.display = player1 && player2 ? 'block' : 'none';
-                        return;
-                    }
-
-                    if (!player1) {
-                        player1 = createPlayer(50, charImg.src);
-                        charImg.classList.add('selected');
-                    } else if (!player2 && charImg.src !== player1.img.src) {
-                        player2 = createPlayer(1250, charImg.src);
-                        charImg.classList.add('selected');
-                    }
-
-                    startGameButton.style.display = player1 && player2 ? 'block' : 'none';
-                });
             });
         }
 
-        function createPlayer(x, imgSrc) {
-            return {
-                x,
-                y: 650,
-                width: 100,
-                height: 150,
-                img: new Image(),
-                damage: 0,
-                knockbackX: 0,
-                knockbackY: 0,
-                isKnockedBack: false,
-                onGround: true,
-                isJumping: false,
-                jumpSpeed: 0
-            };
-        }
-
-        startGameButton.addEventListener('click', () => {
-            characterSelectionDiv.style.display = 'none';
-            startGameButton.style.display = 'none';
-            canvas.style.display = 'block';
-            gameLoop();
-        });
-
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            [player1, player2].forEach(player => {
-                if (player.isKnockedBack) {
-                    player.x += player.knockbackX;
-                    player.y -= player.knockbackY;
-                    player.knockbackY -= 0.2;
-
-                    if (player.y >= 650) {
-                        player.y = 650;
-                        player.isKnockedBack = false;
-                        player.knockbackX = 0;
-                        player.knockbackY = 0;
-                    }
-                }
-            });
-
-            drawPlayer(player1);
-            drawPlayer(player2);
-            requestAnimationFrame(gameLoop);
-        }
-
-        function drawPlayer(player) {
-            if (player) ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
-        }
-
-        populateCharacterSelection();
+        loadCharacters();
     </script>
 </body>
 </html>
