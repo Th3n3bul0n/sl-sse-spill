@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tekken Game - Scaled Knockback with Dynamic Characters</title>
+    <title>Tekken Game with Dynamic Animations</title>
     <style>
         body {
             margin: 0;
@@ -60,13 +60,17 @@
 
         let player1 = null, player2 = null;
 
-        const createPlayer = (x, imgSrc) => ({
+        const createPlayer = (x, imgSrc, id) => ({
             x,
             y: 650,
             width: 100,
             height: 150,
             img: new Image(),
-            damage: 0, // Start at 0% damage
+            id, // Unique identifier for animations
+            currentAnimation: null,
+            animationFrame: 0,
+            animationCooldown: false,
+            damage: 0,
             knockbackX: 0,
             knockbackY: 0,
             isKnockedBack: false,
@@ -76,13 +80,13 @@
         });
 
         const gravity = 1;
-        const jumpStrength = 20; // Jump strength for players
-        const punchDamage = 6; // 6% damage
-        const kickDamage = 8;  // 8% damage
-        const baseKnockbackMultiplier = 0.3; // Base knockback scaling
-        const liftFactor = 0.2; // Lift effect on knockback
+        const jumpStrength = 20;
+        const punchDamage = 6;
+        const kickDamage = 8;
+        const baseKnockbackMultiplier = 0.3;
+        const liftFactor = 0.2;
         const keys = {};
-        const attackCooldown = {}; // Cooldown to prevent holding attack buttons
+        const attackCooldown = {};
 
         const characterSelectionDiv = document.querySelector('.character-selection');
 
@@ -97,8 +101,8 @@
                 const response = await fetch(githubApiUrl);
                 const files = await response.json();
                 files.forEach(file => {
-                    if (file.name.endsWith('.png')) {
-                        addCharacter(rawBaseUrl + file.name);
+                    if (file.name.endsWith('.png') && !file.name.includes('punch') && !file.name.includes('kick')) {
+                        addCharacter(rawBaseUrl + file.name, file.name);
                     }
                 });
             } catch (error) {
@@ -106,7 +110,7 @@
             }
         }
 
-        function addCharacter(imageSrc) {
+        function addCharacter(imageSrc, fileName) {
             const charImg = document.createElement('img');
             charImg.src = imageSrc;
             charImg.className = 'character';
@@ -124,17 +128,31 @@
                 }
 
                 if (!player1) {
-                    player1 = createPlayer(50, charImg.src);
+                    player1 = createPlayer(50, charImg.src, fileName.replace('.png', ''));
                     player1.img.src = charImg.src;
                     charImg.classList.add('selected');
                 } else if (!player2 && charImg.src !== player1.img.src) {
-                    player2 = createPlayer(1250, charImg.src);
+                    player2 = createPlayer(1250, charImg.src, fileName.replace('.png', ''));
                     player2.img.src = charImg.src;
                     charImg.classList.add('selected');
                 }
 
                 startGameButton.style.display = player1 && player2 ? 'block' : 'none';
             });
+        }
+
+        function playAnimation(player, type) {
+            const animationName = `${type}${player.id}`; // e.g., "punch1" or "kick2"
+            const animationImg = new Image();
+            animationImg.src = `${rawBaseUrl}${animationName}.png`;
+            player.currentAnimation = animationImg;
+            player.animationFrame = 0;
+            player.animationCooldown = true;
+
+            setTimeout(() => {
+                player.currentAnimation = null;
+                player.animationCooldown = false;
+            }, 800);
         }
 
         startGameButton.addEventListener('click', () => {
@@ -147,14 +165,12 @@
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Handle knockback and jumping for both players
             [player1, player2].forEach(player => {
                 if (player.isKnockedBack) {
                     player.x += player.knockbackX;
-                    player.y -= player.knockbackY; // Add lift effect
-                    player.knockbackY -= liftFactor; // Reduce lift gradually
+                    player.y -= player.knockbackY;
+                    player.knockbackY -= liftFactor;
 
-                    // Stop knockback when player hits the ground
                     if (player.y >= 650) {
                         player.y = 650;
                         player.isKnockedBack = false;
@@ -163,7 +179,6 @@
                     }
                 }
 
-                // Apply gravity when jumping
                 if (player.isJumping) {
                     player.y += player.jumpSpeed;
                     player.jumpSpeed += gravity;
@@ -176,90 +191,50 @@
                 }
             });
 
-            // Player 1 controls
-            if (keys['a'] && player1.x > 0 && !player1.isKnockedBack) player1.x -= 5;
-            if (keys['d'] && player1.x < canvas.width - player1.width && !player1.isKnockedBack) player1.x += 5;
-            if (keys['w'] && player1.onGround) {
-                player1.isJumping = true;
-                player1.jumpSpeed = -jumpStrength;
-                player1.onGround = false;
+            if (keys['q'] && !player1.animationCooldown) {
+                playAnimation(player1, "punch");
+                applyKnockback(player2, punchDamage, player2.damage);
+            }
+            if (keys['e'] && !player1.animationCooldown) {
+                playAnimation(player1, "kick");
+                applyKnockback(player2, kickDamage, player2.damage);
+            }
+            if (keys['m'] && !player2.animationCooldown) {
+                playAnimation(player2, "punch");
+                applyKnockback(player1, punchDamage, player1.damage);
+            }
+            if (keys['n'] && !player2.animationCooldown) {
+                playAnimation(player2, "kick");
+                applyKnockback(player1, kickDamage, player1.damage);
             }
 
-            // Player 2 controls
-            if (keys['ArrowLeft'] && player2.x > 0 && !player2.isKnockedBack) player2.x -= 5;
-            if (keys['ArrowRight'] && player2.x < canvas.width - player2.width && !player2.isKnockedBack) player2.x += 5;
-            if (keys['ArrowUp'] && player2.onGround) {
-                player2.isJumping = true;
-                player2.jumpSpeed = -jumpStrength;
-                player2.onGround = false;
-            }
-
-            // Handle attacks
-            if (isColliding(player1, player2)) {
-                if (keys['q'] && !attackCooldown['q']) {
-                    applyKnockback(player2, punchDamage, player2.damage);
-                    attackCooldown['q'] = true;
-                    setTimeout(() => (attackCooldown['q'] = false), 300); // 300ms cooldown
-                }
-                if (keys['e'] && !attackCooldown['e']) {
-                    applyKnockback(player2, kickDamage, player2.damage);
-                    attackCooldown['e'] = true;
-                    setTimeout(() => (attackCooldown['e'] = false), 300); // 300ms cooldown
-                }
-                if (keys['m'] && !attackCooldown['m']) {
-                    applyKnockback(player1, punchDamage, player1.damage);
-                    attackCooldown['m'] = true;
-                    setTimeout(() => (attackCooldown['m'] = false), 300); // 300ms cooldown
-                }
-                if (keys['n'] && !attackCooldown['n']) {
-                    applyKnockback(player1, kickDamage, player1.damage);
-                    attackCooldown['n'] = true;
-                    setTimeout(() => (attackCooldown['n'] = false), 300); // 300ms cooldown
-                }
-            }
-
-            // Draw players and damage indicators
             drawPlayer(player1);
             drawPlayer(player2);
             drawDamage(player1, 50);
             drawDamage(player2, 1250);
-
-            // Check for winner
-            if (player1.x <= 0 || player1.x >= canvas.width) {
-                winnerDiv.textContent = 'Player 2 Wins!';
-                return;
-            } else if (player2.x <= 0 || player2.x >= canvas.width) {
-                winnerDiv.textContent = 'Player 1 Wins!';
-                return;
-            }
 
             requestAnimationFrame(gameLoop);
         }
 
         function applyKnockback(player, damage, currentDamage) {
             player.damage += damage;
-            const totalKnockback = (baseKnockbackMultiplier + currentDamage * 0.01) * damage; // Scale knockback with damage %
+            const totalKnockback = (baseKnockbackMultiplier + currentDamage * 0.01) * damage;
             player.knockbackX = totalKnockback * (player === player1 ? -1 : 1);
-            player.knockbackY = totalKnockback * liftFactor; // Add lift
+            player.knockbackY = totalKnockback * liftFactor;
             player.isKnockedBack = true;
         }
 
         function drawPlayer(player) {
-            ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
+            if (player.currentAnimation) {
+                ctx.drawImage(player.currentAnimation, player.x, player.y, player.width, player.height);
+            } else {
+                ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
+            }
         }
 
         function drawDamage(player, x) {
             ctx.fillStyle = 'white';
             ctx.fillText(`Damage: ${player.damage.toFixed(1)}%`, x, 50);
-        }
-
-        function isColliding(p1, p2) {
-            return (
-                p1.x < p2.x + p2.width &&
-                p1.x + p1.width > p2.x &&
-                p1.y < p2.y + p2.height &&
-                p1.y + p1.height > p2.y
-            );
         }
 
         window.addEventListener('keydown', e => (keys[e.key] = true));
