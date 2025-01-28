@@ -58,14 +58,6 @@
         const winnerDiv = document.getElementById('winner');
 
         let player1 = null, player2 = null;
-        const attackLock = {}; // Prevent multiple attacks during animation
-        const keys = {};
-        const gravity = 1;
-        const jumpStrength = 20;
-        const punchDamage = 6;
-        const kickDamage = 8;
-        const baseKnockbackMultiplier = 0.3;
-        const liftFactor = 0.2;
 
         const createPlayer = (x, imgSrc) => ({
             x,
@@ -82,6 +74,16 @@
             jumpSpeed: 0
         });
 
+        const gravity = 1;
+        const jumpStrength = 20;
+        const punchDamage = 6;
+        const kickDamage = 8;
+        const baseKnockbackMultiplier = 0.3;
+        const liftFactor = 0.2;
+        const keys = {};
+        const attackCooldown = {};
+        const attackLock = {}; // Prevent multiple attacks during animation
+
         const characterSelectionDiv = document.querySelector('.character-selection');
 
         const repoOwner = "Th3n3bul0n";
@@ -95,7 +97,6 @@
                 const response = await fetch(githubApiUrl);
                 const files = await response.json();
                 files.forEach(file => {
-                    // Exclude punch/kick sprites from appearing in character selection
                     if (file.name.endsWith('.png') && !file.name.startsWith('punch') && !file.name.startsWith('kick')) {
                         addCharacter(rawBaseUrl + file.name);
                     }
@@ -159,31 +160,36 @@
             if (key === 'q' && player1 && !attackLock['q']) {
                 attackLock['q'] = true;
                 replaceSprite(player1, 'punch', () => {
+                    applyKnockback(player2, punchDamage, player2.damage);
                     attackLock['q'] = false;
                 });
             } else if (key === 'e' && player1 && !attackLock['e']) {
                 attackLock['e'] = true;
                 replaceSprite(player1, 'kick', () => {
+                    applyKnockback(player2, kickDamage, player2.damage);
                     attackLock['e'] = false;
                 });
             } else if (key === 'm' && player2 && !attackLock['m']) {
                 attackLock['m'] = true;
                 replaceSprite(player2, 'punch', () => {
+                    applyKnockback(player1, punchDamage, player1.damage);
                     attackLock['m'] = false;
                 });
             } else if (key === 'n' && player2 && !attackLock['n']) {
                 attackLock['n'] = true;
                 replaceSprite(player2, 'kick', () => {
+                    applyKnockback(player1, kickDamage, player1.damage);
                     attackLock['n'] = false;
                 });
             }
         });
 
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawPlayer(player1);
-            drawPlayer(player2);
-            requestAnimationFrame(gameLoop);
+        function applyKnockback(player, damage, currentDamage) {
+            player.damage += damage;
+            const totalKnockback = (baseKnockbackMultiplier + currentDamage * 0.01) * damage;
+            player.knockbackX = totalKnockback * (player === player1 ? -1 : 1);
+            player.knockbackY = totalKnockback * liftFactor;
+            player.isKnockedBack = true;
         }
 
         function drawPlayer(player) {
@@ -191,6 +197,44 @@
                 ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
             }
         }
+
+        function drawDamage(player, x) {
+            ctx.fillStyle = 'white';
+            ctx.fillText(`Damage: ${player.damage.toFixed(1)}%`, x, 50);
+        }
+
+        function isColliding(p1, p2) {
+            return (
+                p1.x < p2.x + p2.width &&
+                p1.x + p1.width > p2.x &&
+                p1.y < p2.y + p2.height &&
+                p1.y + p1.height > p2.y
+            );
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            [player1, player2].forEach(player => {
+                if (player.isKnockedBack) {
+                    player.x += player.knockbackX;
+                    player.y -= player.knockbackY;
+                    player.knockbackY -= liftFactor;
+                    if (player.y >= 650) {
+                        player.y = 650;
+                        player.isKnockedBack = false;
+                        player.knockbackX = 0;
+                        player.knockbackY = 0;
+                    }
+                }
+
+                drawPlayer(player);
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('keydown', e => (keys[e.key] = true));
+        window.addEventListener('keyup', e => (keys[e.key] = false));
 
         loadCharacters();
     </script>
